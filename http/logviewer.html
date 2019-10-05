@@ -1,0 +1,183 @@
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<html>
+    <head>
+        <title>domain1.com</title>      
+        <script type="text/javascript">
+            //global vars
+            var date = "";
+            var time = "";
+            
+            function updateDates()  {
+                //get current date panel and remove existing nodes
+                var datepanel = document.getElementById("datepanel");
+                while (datepanel.firstChild) {
+                    datepanel.removeChild(datepanel.firstChild);
+                }
+                //send request to get logs
+                var xhttp = new XMLHttpRequest();
+                xhttp.onreadystatechange = function() {
+                    if (this.readyState == 4 && this.status == 200) {
+                        //split response text into lines
+                        var lines = this.responseText.split('\n');
+                        for (var i = 0; i < lines.length; i++) {
+                            if (lines[i] != "" && lines[i] != '\n') {
+                                //create new div element and set attribute
+                                var dateelem = document.createElement("div");
+                                dateelem.innerHTML = lines[i];
+                                dateelem.setAttribute("id", lines[i]);
+                                dateelem.setAttribute("onclick", "selectDate(\"".concat(lines[i]).concat("\")"));
+                                //add newest date element to top of list
+                                datepanel.prepend(dateelem);
+                            }
+                        }
+                    }
+                };
+                xhttp.open("GET", "motdec.php?get=eventdates", true);
+                xhttp.send();
+            }
+            
+            function updateTimes() {
+                //get current time panel and remove existing nodes
+                var timepanel = document.getElementById("timepanel");
+                while (timepanel.firstChild) {
+                    timepanel.removeChild(timepanel.firstChild);
+                }
+
+                if (date == "") {
+                    timepanel.innerHTML = "<div>Select a date to display the times of each event on that date</div>";
+                } else {
+                    //send request to get logs
+                    var xhttp = new XMLHttpRequest();
+                    xhttp.onreadystatechange = function() {
+                        if (this.readyState == 4 && this.status == 200) {
+                            //split response text into lines
+                            var lines = this.responseText.split('\n');
+                            for (var i = 0; i < lines.length; i++) {
+                                if (lines[i] != "" && lines[i] != '\n') {
+                                    //create new div element and set attribute
+                                    var timeelem = document.createElement("div");
+                                    timeelem.innerHTML = lines[i];
+                                    timeelem.setAttribute("id", lines[i]);
+                                    timeelem.setAttribute("onclick", "selectTime(\"".concat(lines[i]).concat("\")"));
+                                    //add newest time element to top of list
+                                    timepanel.prepend(timeelem);
+                                }
+                            }
+                        }
+                    };
+                    xhttp.open("GET", "motdec.php?get=eventtimes&date=".concat(date), true);
+                    xhttp.send();
+                }
+            }
+
+            function updateEventImages() {
+                var viewpanel = document.getElementById("viewpanel");
+                viewpanel.innerHTML = "";
+                if (date == "" && time == "") {
+                    viewpanel.innerHTML = "Select a date and time to display images of a motion event";
+                } else if (date != "" && time == "") {
+                    viewpanel.innerHTML = "Select a time to display images of a motion event";
+                } else {
+                    var srcstr = "motdec.php?get=event&date=".concat(date).concat("&time=").concat(time).concat("&img=");
+
+                    var bg = new Image();
+                    var change = new Image();
+                    var diff = new Image();
+                    var segmap = new Image();
+                    
+                    viewpanel.appendChild(bg);
+                    viewpanel.appendChild(change);
+                    viewpanel.appendChild(diff);
+                    viewpanel.appendChild(segmap);
+                    
+                    bg.src = srcstr.concat("background");
+                    change.src = srcstr.concat("change");
+                    diff.src = srcstr.concat("difference");
+                    segmap.src = srcstr.concat("segmap");
+                }
+            }
+
+            function selectDate(datestr) {
+                date = datestr;
+                time = "";
+            
+                var dateElements = document.getElementById("datepanel").childNodes;
+
+                for(var i = 0; i < dateElements.length; i++) {
+                    if (dateElements[i].innerHTML == datestr) {
+                        dateElements[i].setAttribute("style", "border: 1px solid black;");
+                    } else {
+                        dateElements[i].setAttribute("style", "");
+                    }
+                }
+                
+                updateTimes();
+                updateEventImages();
+            }
+
+            function selectTime(timestr) {
+                time = timestr;
+                
+                var timeElements = document.getElementById("timepanel").childNodes;
+
+                for(var i = 0; i < timeElements.length; i++) {
+                    if (timeElements[i].innerHTML == timestr) {
+                        timeElements[i].setAttribute("style", "border: 1px solid black;");
+                    } else {
+                        timeElements[i].setAttribute("style", "");
+                    }
+                }
+                
+                updateEventImages();
+            }
+
+        </script>
+        <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        img {
+            padding: 10px;
+        }
+        
+        #datepanel {
+            padding: 10px;
+            width: 20%;
+            height: 90%;
+            border: 1px solid black;
+            float: left;
+            overflow-y: scroll;
+            background-color: gray;
+        }
+
+        #timepanel {
+            padding: 10px;
+            width: 20%;
+            height: 90%;
+            border: 1px solid black;
+            float: left;
+            overflow-y: scroll;
+            background-color: gray;
+        }
+        #viewpanel {
+            padding: 10px;
+            width: 60%;
+            height: 90%;
+            border: 1px solid black;
+            float: left;
+            overflow-y: scroll;
+            background-color: gray;
+        }
+        body {
+            background-color: dimgray;
+        }
+        </style>  
+    </head>
+    <body onload="updateDates();updateTimes();updateEventImages()">
+        <h1 onclick="location.href='/index.html'">motdec web interface - click to go to live feed</h1>
+        <div id="datepanel"></div>
+        <div id="timepanel"></div>
+        <div id="viewpanel"></div>
+    </body>
+</html>

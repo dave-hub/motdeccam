@@ -1,0 +1,155 @@
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<html>
+  <head>
+    <title>domain1.com</title>      
+    <script type="text/javascript">
+        //global playing variable
+        var playing = true;
+        var running = false;
+        var logindex = 0;
+
+        //checks if motdec is running and capturing images
+        //updates global running var
+        function isRunning() {
+            //send get request and set running var to returned value
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    var parser = new DOMParser();
+                    var xml = parser.parseFromString(this.responseText, "text/xml");
+                    var runningstr = xml.getElementsByTagName("running")[0].childNodes[0].nodeValue;
+                    if (runningstr == "true") {
+                        running = true;
+                    } else if (runningstr == "false") {
+                        running = false;
+                    } else {
+                        alert("uhh");
+                    }
+                    ret = 1;
+                }
+            };
+            xhttp.open("GET", "motdec.php?get=running", true);
+            xhttp.send();
+        }
+        
+        //updates the canvas image every second
+        function updateImage() {
+            var c = document.getElementById("imgview");
+            var ctx = c.getContext("2d");
+            var cw = c.width;
+            var ch = c.height;
+            
+            //if motdec program running
+            if (running) {
+                //update logs
+                updateLogs();
+                //if playing, draw image to canvas
+                if (playing) {
+                    var img = new Image;
+                    img.onload = function() {
+                        ctx.drawImage(img, 0, 0, img.width, img.height,
+                                           0, 0, cw, ch);
+                    };
+                    img.src = "motdec.php?get=img&"+Date.now();
+                    
+                    //update running and updateImage again in 1 sec
+                    isRunning();
+                    setTimeout(updateImage, 1000);
+                //if on pause, draw pause icon
+                } else {
+                    var y = ch / 3;
+                    var w = (5 * cw) / 48;
+                    var h = ch / 3;
+                    ctx.beginPath();
+                    ctx.rect((3*cw)/8, y, w, h);
+                    ctx.rect((25*cw)/48, y, w, h);
+                    ctx.fillStyle = "white";
+                    ctx.fill();
+                }
+            //motdec NOT running
+            } else {
+                //draw stop icon
+                ctx.beginPath();
+                ctx.rect(0,0,cw,ch);
+                ctx.fillStyle = "black";
+                ctx.fill();
+                ctx.beginPath();
+                ctx.rect(cw/3,ch/3,cw/3,ch/3);
+                ctx.fillStyle = "white";
+                ctx.fill();
+                //if user still playing, keep checking every 5 secs
+                if (playing) {
+                    isRunning();
+                    setTimeout(updateImage, 1000);
+                }
+            }
+        }
+        
+        //toggles client-side play pause
+        function playPause() {
+            if (playing) {
+                playing = false;
+            } else {
+                playing = true;
+                updateImage();
+            }
+        }
+
+        //adds all logs from index onwards to top of log display
+        function updateLogs() {
+            //send request to get logs
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    //split response text into lines
+                    var lines = this.responseText.split('\n');
+                    for (var i = 0; i < lines.length; i++) {
+                        if (lines[i] != "" && lines[i] != '\n') {
+                            //create new div element and set attribute
+                            var logelem = document.createElement("div");
+                            logelem.innerHTML = lines[i];
+                            logelem.setAttribute("id", logindex++);
+                            //add newest log element to top of list
+                            document.getElementById("logview").prepend(logelem);
+                        }
+                    }
+                }
+            };
+            xhttp.open("GET", "motdec.php?get=log&index=".concat(logindex), true);
+            xhttp.send();
+        }
+  </script>
+  <style>
+    * {
+        box-sizing: border-box;
+    }
+
+    #imgview {
+        padding: 10px;
+        width: 70%;
+        height: 90%;
+        border: 1px solid black;
+        float: left;
+        background-color: gray;
+    }
+
+    #logview {
+        padding: 10px;
+        width: 30%;
+        height: 90%;
+        border: 1px solid black;
+        float: left;
+        overflow-y: scroll;
+        background-color: gray;
+    }
+    body {
+        background-color: dimgray;
+    }
+  </style>  
+  </head>
+  <body onload="updateImage()">
+    <h1 onclick="location.href='/logviewer.html'">motdec web interface - click to go to log viewer</h1>
+    <canvas id="imgview" onload="updateImage()" onclick="playPause()"></canvas>
+    <div id="logview" onload="addLogs(0)"></div>
+  </body>
+</html>
